@@ -1,0 +1,41 @@
+---
+title: "SPA completion reports"
+author: "DL"
+date: "2025-02-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# include=FALSE means it won't include any code blocks in the knit
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+# libraries
+library("RColorBrewer")
+library(ggplot2)
+```
+```{r}
+# set colours
+display.brewer.all()
+colors <- brewer.pal(3, "Set1")
+print(colors)
+```
+```{r, fig.width=12, fig.height=8}
+# show options for colours from Brewer's Palette
+display.brewer.all()
+```
+
+
+```{r Load data}
+# Load files
+examinee_data = read.csv("Examinee_data_example_for_test_completion.csv", header=TRUE, sep=",")
+# high_school_data = read.csv("high_school_data.csv", header=TRUE, sep=",")
+head(examinee_data)
+```
+
+```{r}
+
+
+```
+
