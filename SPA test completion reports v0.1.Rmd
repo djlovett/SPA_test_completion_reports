@@ -1,13 +1,17 @@
 ---
 title: "SPA Running Completion Report"
-subtitle: "Tracking completion and engagement"
 author: "SPA Team"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
   html_document:
-    highlight: tango
-mainfont: "Univers"
+    df_print: paged
+  pdf_document: default
+subtitle: Tracking completion and engagement
+mainfont: Univers
 ---
+```{r}
+rm(list=ls()) 
+```
 
 
 ```{r setup, include=FALSE}
@@ -22,6 +26,7 @@ library(ggplot2)
 library(kableExtra)
 library(ggpattern)
 library(patchwork)
+library(scales)  # For percent labels on the y-axis
 ```
 
 ```{r, fig.width=12, fig.height=8}
@@ -36,12 +41,37 @@ display.brewer.pal(9, "Blues")
 ```
 
 
+
+
+
 ```{r}
 # Load file with completion stats (produced in Python)
-completion_stats <- read.csv("completion_stats_by_date-DougMOE.csv", 
+completion_stats <- read.csv("overall_engagement_stats_by_date.csv", 
                                row.names = 1, check.names = FALSE)
 
 completion_stats
+```
+```{r}
+total_cand = 30000 # length of school data?
+total_comp = 4125 # can adjust according to length of Examinee data files
+total_comp_perc = total_comp/total_cand
+
+# Create a data frame with counts for Completed and Not Completed
+df <- data.frame(
+  Category = c("Completed", "Not Completed"),
+  Count = c(total_comp, total_cand - total_comp)
+)
+
+# Create the pie chart using ggplot2
+ggplot(df, aes(x = "", y = Count, fill = Category)) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  coord_polar("y", start = 0) +
+  scale_fill_brewer(palette = "Greens", direction=-1) +
+  theme_void() +
+  labs(title = "Completion Percentage") +
+  geom_text(aes(label = paste0(round((Count/sum(Count))*100, 1), "%")),
+            position = position_stack(vjust = 0.5))
+
 ```
 
 
@@ -100,7 +130,6 @@ colnames(completion_stats) <- as.Date(gsub("^X", "", colnames(completion_stats))
 
 # Save each row (metric) as a variable
 test_time_low_by_date    <- as.numeric(completion_stats["Low total test time percentage", ])
-test_time_low_by_date
 writing_time_low_by_date <- as.numeric(completion_stats["Low writing time percentage", ])
 writing_words_low_by_date<- as.numeric(completion_stats["Low word count percentage", ])
 
@@ -115,21 +144,21 @@ df_writing_words <- data.frame(Date = as.Date(colnames(completion_stats)),
 
 p1 <- ggplot(df_test_time, aes(x = Date, y = Percentage)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "Low Total Test Time Percentage", x = "Date", y = "Percentage") +
+  labs(title = "Completed test in < 20% of time given", x = "Date", y = "Percentage") +
   scale_y_continuous(limits = c(0, 1)) +
   theme_minimal()
 
 # Create bar chart for Low Writing Time Percentage
 p2 <- ggplot(df_writing_time, aes(x = Date, y = Percentage)) +
   geom_bar(stat = "identity", fill = "darkgreen") +
-  labs(title = "Low Writing Time Percentage", x = "Date", y = "Percentage") +
+  labs(title = "Completed writing in < 10% of time given", x = "Date", y = "Percentage") +
   scale_y_continuous(limits = c(0, 1)) +
   theme_minimal()
 
 # Create bar chart for Low Word Count Percentage
 p3 <- ggplot(df_writing_words, aes(x = Date, y = Percentage)) +
   geom_bar(stat = "identity", fill = "darkred") +
-  labs(title = "Low Word Count Percentage", x = "Date", y = "Percentage") +
+  labs(title = "Wrote < 20 words", x = "Date", y = "Percentage") +
   scale_y_continuous(limits = c(0, 1)) +
   theme_minimal()
 
