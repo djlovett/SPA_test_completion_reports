@@ -1,9 +1,14 @@
 ---
-title: "SPA completion reports"
-author: "DL"
-date: "2025-02-24"
-output: html_document
+title: "SPA Running Completion Report"
+subtitle: "Tracking completion and engagement"
+author: "SPA Team"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    highlight: tango
+mainfont: "Univers"
 ---
+
 
 ```{r setup, include=FALSE}
 # include=FALSE means it won't include any code blocks in the knit
@@ -12,30 +17,125 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```{r}
 # libraries
-library("RColorBrewer")
+library(RColorBrewer)
 library(ggplot2)
+library(kableExtra)
+library(ggpattern)
+library(patchwork)
 ```
-```{r}
-# set colours
-display.brewer.all()
-colors <- brewer.pal(3, "Set1")
-print(colors)
-```
+
 ```{r, fig.width=12, fig.height=8}
 # show options for colours from Brewer's Palette
 display.brewer.all()
 ```
 
 
-```{r Load data}
-# Load files
-examinee_data = read.csv("Examinee_data_example_for_test_completion.csv", header=TRUE, sep=",")
-# high_school_data = read.csv("high_school_data.csv", header=TRUE, sep=",")
-head(examinee_data)
+```{r}
+# set colours
+display.brewer.pal(9, "Blues")
 ```
+
+
+```{r}
+# Load file with completion stats (produced in Python)
+completion_stats <- read.csv("completion_stats_by_date-DougMOE.csv", 
+                               row.names = 1, check.names = FALSE)
+
+completion_stats
+```
+
+
+```{r}
+# Make a table with gradient colours
+
+# Save the original row names
+original_row_names <- rownames(completion_stats)
+
+# Convert numeric values to percentages (multiply by 100 and round to one decimal place)
+completion_stats_numeric <- round(completion_stats * 100, 1)
+# Convert column names to character to avoid automatic modifications
+colnames(completion_stats_numeric) <- as.character(colnames(completion_stats_numeric))
+
+# Create a color ramp from green (0%) to red (100%)
+color_ramp <- colorRampPalette(c("green", "red"))(101)
+
+# Format each cell using cell_spec, which applies the gradient background based on the value.
+completion_stats_formatted <- as.data.frame(lapply(completion_stats_numeric, function(x) {
+  cell_spec(paste0(x, "%"),
+            background = color_ramp[round(x) + 1],
+            format = "html")
+}))
+
+# Restore the original row names
+rownames(completion_stats_formatted) <- original_row_names
+
+# Ensure column names remain clean (get rid of the X)
+colnames(completion_stats_formatted) <- gsub("^X", "", colnames(completion_stats_numeric))
+
+# Display the table with styling (escape = FALSE to render the HTML formatting)
+kable(completion_stats_formatted, 
+      format = "html", 
+      escape = FALSE, 
+      caption = "Test Engagement Overall") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+```
+
+
+<hr>
 
 ```{r}
 
 
 ```
 
+
+## Engagement rates by high school
+<hr>
+
+```{r}
+# Remove any leading "X" from column names and convert them to Date objects
+colnames(completion_stats) <- as.Date(gsub("^X", "", colnames(completion_stats)), 
+                                      format = "%Y-%m-%d")
+
+# Save each row (metric) as a variable
+test_time_low_by_date    <- as.numeric(completion_stats["Low total test time percentage", ])
+test_time_low_by_date
+writing_time_low_by_date <- as.numeric(completion_stats["Low writing time percentage", ])
+writing_words_low_by_date<- as.numeric(completion_stats["Low word count percentage", ])
+
+# Create data frames for plotting.
+# Each data frame has a 'Date' column (from the column names) and a 'Percentage' column (the row values)
+df_test_time <- data.frame(Date = as.Date(colnames(completion_stats)),
+                           Percentage = test_time_low_by_date)
+df_writing_time <- data.frame(Date = as.Date(colnames(completion_stats)),
+                              Percentage = writing_time_low_by_date)
+df_writing_words <- data.frame(Date = as.Date(colnames(completion_stats)),
+                               Percentage = writing_words_low_by_date)
+
+p1 <- ggplot(df_test_time, aes(x = Date, y = Percentage)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Low Total Test Time Percentage", x = "Date", y = "Percentage") +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_minimal()
+
+# Create bar chart for Low Writing Time Percentage
+p2 <- ggplot(df_writing_time, aes(x = Date, y = Percentage)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  labs(title = "Low Writing Time Percentage", x = "Date", y = "Percentage") +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_minimal()
+
+# Create bar chart for Low Word Count Percentage
+p3 <- ggplot(df_writing_words, aes(x = Date, y = Percentage)) +
+  geom_bar(stat = "identity", fill = "darkred") +
+  labs(title = "Low Word Count Percentage", x = "Date", y = "Percentage") +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_minimal()
+
+# Print the plots
+p1
+p2
+p3
+
+```
