@@ -3,15 +3,19 @@ title: "SPA Running Completion Report"
 author: "SPA Team"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
-  html_document:
-    df_print: paged
-  pdf_document: default
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: kate
+    df_print: kable
+
 subtitle: Tracking completion and engagement
 mainfont: Univers
 ---
-```{r}
-rm(list=ls()) 
-```
+<style type="text/css">
+   .main-container {max-width: 70%;}
+   .row {display: flex;}
+   .column {flex: 50%;}
+</style>
 
 
 ```{r setup, include=FALSE}
@@ -20,12 +24,19 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r}
+rm(list=ls()) 
+```
+
+```{r}
 # libraries
+library(dplyr)
 library(RColorBrewer)
 library(ggplot2)
 library(kableExtra)
 library(ggpattern)
 library(patchwork)
+library(tidyr)
+library(gridExtra)
 library(scales)  # For percent labels on the y-axis
 ```
 
@@ -38,6 +49,8 @@ display.brewer.all()
 ```{r}
 # set colours
 display.brewer.pal(9, "Blues")
+# display.brewer.pal(9, "Set2")
+
 ```
 
 
@@ -46,78 +59,109 @@ display.brewer.pal(9, "Blues")
 
 ```{r}
 # Load file with completion stats (produced in Python)
-completion_stats <- read.csv("overall_engagement_stats_by_date.csv", 
+engagement_stats_o <- read.csv("overall_engagement_stats_by_date.csv", 
                                row.names = 1, check.names = FALSE)
 
-completion_stats
-```
-```{r}
-total_cand = 30000 # length of school data?
-total_comp = 4125 # can adjust according to length of Examinee data files
-total_comp_perc = total_comp/total_cand
 
-# Create a data frame with counts for Completed and Not Completed
-df <- data.frame(
-  Category = c("Completed", "Not Completed"),
-  Count = c(total_comp, total_cand - total_comp)
+engagement_stats_s <- read.csv("engagement_stats_by_school.csv", 
+                               row.names = 1, check.names = FALSE)
+
+total_completion_stats = read.csv("overall_completion_rates.csv")
+colnames(total_completion_stats)[1] <- "Status"
+colnames(total_completion_stats)[2] <- "Candidates"
+```
+
+<style type="text/css">
+   .main-container {max-width: 100%;}
+   .row {display: flex;}
+   .column {flex: 50%;}
+
+
+## How many candidates have completed the exam in total?
+
+
+
+```{r}
+
+df <- total_completion_stats %>%
+  filter(Status != "Percentage Completed") %>%   # Remove the percentage row
+  mutate(Candidates = as.numeric(Candidates))    # Convert to numeric
+
+# Create the pie chart using the filtered dataframe
+pie_chart <- ggplot(df, aes(x = "", y = Candidates, fill = Status)) +
+  geom_bar(stat = "identity", width = 1, color = "white") + 
+  coord_polar("y", start = 0) + 
+  scale_fill_manual(values = c("#2E8B57", "#A1D99B")) +  # Gradient-like colors
+  theme_void() + 
+  labs(title = "Completion Status") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 14)) + 
+  geom_text(aes(label = paste0(round((Candidates / sum(Candidates)) * 100, 1), "%")),
+            position = position_stack(vjust = 0.5), 
+            size = 6, fontface = "bold", color = "white")
+
+
+```
+</style>
+<div class = "row">
+<div class = "column">
+### Total completion statistics
+```{r echo=FALSE}
+```
+
+
+```{r echo=FALSE}
+pie_chart
+```
+</div>
+
+<div class = "column">
+```{r echo=FALSE}
+total_completion_stats
+```
+</div>
+</div>
+
+
+```{r, fig.width=15, fig.height=6, fig.align='center'}
+# Table of engagement stats overall
+engagement_stats_o
+
+# Transpose the data so dates are in one column
+engagement_long <- as.data.frame(t(engagement_stats_o))
+engagement_long$Date <- rownames(engagement_long)
+
+# Convert to long format
+engagement_long <- pivot_longer(engagement_long, 
+                                cols = -Date, 
+                                names_to = "Category", 
+                                values_to = "Percentage")
+
+# Convert Date to proper format
+engagement_long$Date <- as.Date(engagement_long$Date)
+
+# Define a theme with larger text
+big_text_theme <- theme(
+  plot.title = element_text(size = 45, face = "bold"),  # Bigger title
+  axis.title = element_text(size = 25),                # Bigger axis labels
+  axis.text = element_text(size = 15),                 # Bigger axis text
+  legend.title = element_text(size = 25, face = "bold"), # Bigger legend title
+  legend.text = element_text(size = 20)                # Bigger legend text
 )
 
-# Create the pie chart using ggplot2
-ggplot(df, aes(x = "", y = Count, fill = Category)) +
-  geom_bar(width = 1, stat = "identity", color = "white") +
-  coord_polar("y", start = 0) +
-  scale_fill_brewer(palette = "Greens", direction=-1) +
-  theme_void() +
-  labs(title = "Completion Percentage") +
-  geom_text(aes(label = paste0(round((Count/sum(Count))*100, 1), "%")),
-            position = position_stack(vjust = 0.5))
-
-```
-
-
-```{r}
-# Make a table with gradient colours
-
-# Save the original row names
-original_row_names <- rownames(completion_stats)
-
-# Convert numeric values to percentages (multiply by 100 and round to one decimal place)
-completion_stats_numeric <- round(completion_stats * 100, 1)
-# Convert column names to character to avoid automatic modifications
-colnames(completion_stats_numeric) <- as.character(colnames(completion_stats_numeric))
-
-# Create a color ramp from green (0%) to red (100%)
-color_ramp <- colorRampPalette(c("green", "red"))(101)
-
-# Format each cell using cell_spec, which applies the gradient background based on the value.
-completion_stats_formatted <- as.data.frame(lapply(completion_stats_numeric, function(x) {
-  cell_spec(paste0(x, "%"),
-            background = color_ramp[round(x) + 1],
-            format = "html")
-}))
-
-# Restore the original row names
-rownames(completion_stats_formatted) <- original_row_names
-
-# Ensure column names remain clean (get rid of the X)
-colnames(completion_stats_formatted) <- gsub("^X", "", colnames(completion_stats_numeric))
-
-# Display the table with styling (escape = FALSE to render the HTML formatting)
-kable(completion_stats_formatted, 
-      format = "html", 
-      escape = FALSE, 
-      caption = "Test Engagement Overall") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+# Plot three separate line graphs (one per row)
+ggplot(engagement_long, aes(x = Date, y = Percentage, color = Category)) +
+    geom_line(size = 1) +
+    facet_grid(Category ~ ., scales = "free_y") +  # Forces each graph to be on a separate row
+    labs(title = "Engagement Statistics Over Time", 
+         x = "Date", y = "Percentage") +
+    theme_minimal() + big_text_theme
 
 ```
 
 
 <hr>
 
-```{r}
 
-
-```
 
 
 ## Engagement rates by high school
@@ -125,41 +169,41 @@ kable(completion_stats_formatted,
 
 ```{r}
 # Remove any leading "X" from column names and convert them to Date objects
-colnames(completion_stats) <- as.Date(gsub("^X", "", colnames(completion_stats)), 
+colnames(engagement_stats_o) <- as.Date(gsub("^X", "", colnames(engagement_stats_o)), 
                                       format = "%Y-%m-%d")
 
 # Save each row (metric) as a variable
-test_time_low_by_date    <- as.numeric(completion_stats["Low total test time percentage", ])
-writing_time_low_by_date <- as.numeric(completion_stats["Low writing time percentage", ])
-writing_words_low_by_date<- as.numeric(completion_stats["Low word count percentage", ])
+test_time_low_by_date    <- as.numeric(engagement_stats_o["Low total test time percentage", ])
+writing_time_low_by_date <- as.numeric(engagement_stats_o["Low writing time percentage", ])
+writing_words_low_by_date<- as.numeric(engagement_stats_o["Low word count percentage", ])
 
 # Create data frames for plotting.
 # Each data frame has a 'Date' column (from the column names) and a 'Percentage' column (the row values)
-df_test_time <- data.frame(Date = as.Date(colnames(completion_stats)),
+df_test_time <- data.frame(Date = as.Date(colnames(engagement_stats_o)),
                            Percentage = test_time_low_by_date)
-df_writing_time <- data.frame(Date = as.Date(colnames(completion_stats)),
+df_writing_time <- data.frame(Date = as.Date(colnames(engagement_stats_o)),
                               Percentage = writing_time_low_by_date)
-df_writing_words <- data.frame(Date = as.Date(colnames(completion_stats)),
+df_writing_words <- data.frame(Date = as.Date(colnames(engagement_stats_o)),
                                Percentage = writing_words_low_by_date)
 
 p1 <- ggplot(df_test_time, aes(x = Date, y = Percentage)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(title = "Completed test in < 20% of time given", x = "Date", y = "Percentage") +
-  scale_y_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 100)) +
   theme_minimal()
 
 # Create bar chart for Low Writing Time Percentage
 p2 <- ggplot(df_writing_time, aes(x = Date, y = Percentage)) +
   geom_bar(stat = "identity", fill = "darkgreen") +
   labs(title = "Completed writing in < 10% of time given", x = "Date", y = "Percentage") +
-  scale_y_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 100)) +
   theme_minimal()
 
 # Create bar chart for Low Word Count Percentage
 p3 <- ggplot(df_writing_words, aes(x = Date, y = Percentage)) +
   geom_bar(stat = "identity", fill = "darkred") +
   labs(title = "Wrote < 20 words", x = "Date", y = "Percentage") +
-  scale_y_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 100)) +
   theme_minimal()
 
 # Print the plots
@@ -168,3 +212,20 @@ p2
 p3
 
 ```
+
+
+## Student engagement by school
+
+The following are strong evidence that candidates are not engaging fully in the test:
+
+- Candidates who used less than **20%** of the total allocated test time are likely not engaging fully in the assessment.
+- Candidates who used less than **10%** of the allocated writing time.
+- Candidates who wrote less than **20 words** on the writing section.
+
+ 
+```{r, fig.width=6, fig.height=6, fig.align='center', fig.show='hold'}
+engagement_stats_s
+
+
+```
+
