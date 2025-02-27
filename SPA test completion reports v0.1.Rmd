@@ -59,6 +59,8 @@ display.brewer.pal(9, "Blues")
 
 ```{r}
 # Load file with completion stats (produced in Python)
+
+
 engagement_stats_o <- read.csv("overall_engagement_stats_by_date.csv", 
                                row.names = 1, check.names = FALSE)
 
@@ -69,6 +71,8 @@ engagement_stats_s <- read.csv("engagement_stats_by_school.csv",
 total_completion_stats = read.csv("overall_completion_rates.csv")
 colnames(total_completion_stats)[1] <- "Status"
 colnames(total_completion_stats)[2] <- "Candidates"
+
+
 ```
 
 <style type="text/css">
@@ -120,6 +124,14 @@ total_completion_stats
 ```
 </div>
 </div>
+
+```{r}
+# completion rates by Emirate
+
+
+```
+
+
 
 
 ```{r, fig.width=15, fig.height=6, fig.align='center'}
