@@ -136,7 +136,7 @@ pie_chart
 
 <div class = "column">
 ```{r echo=FALSE}
-knitr::kable(total_completion_stats, format="html") %>%
+knitr::kable(total_completion_stats, format="html", digits=0) %>%
   kableExtra::kable_styling(bootstrap_options = "striped", full_width=FALSE)
 ```
 </div>
